@@ -5,6 +5,7 @@ import subprocess
 import re
 import os
 import wafw00f
+import concurrent.futures
 
 def load_well_known_ports(filename):
     try:
@@ -106,6 +107,52 @@ def wafw00f_scan():
     except subprocess.CalledProcessError:
         print("Erro ao verificar o site com WAFW00F.")
 
+def resolve_subdomain(subdomain):
+    try:
+        ip = socket.gethostbyname(subdomain)
+        return subdomain, ip
+    except (socket.gaierror, socket.timeout):
+        return None
+
+def subdomain_enum():
+    alvo = input("Digite o domínio principal (ex: example.com): ").strip()
+    wordlist_path = input("Caminho para o arquivo com subdomínios: ").strip()
+
+    if not os.path.exists(wordlist_path):
+        print("Arquivo de wordlist não encontrado.")
+        return
+
+    print("Enumerando subdomínios... Isso pode levar alguns minutos.")
+
+    with open(wordlist_path, "r") as file:
+        subdomains = [f"{line.strip()}.{alvo}" for line in file if line.strip()]
+
+    encontrados = []
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        futures = [executor.submit(resolve_subdomain, sub) for sub in subdomains]
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result:
+                encontrados.append(result)
+
+    if encontrados:
+        print("\nSubdomínios encontrados:")
+        for sub, ip in encontrados:
+            print(f"{sub} → {ip}")
+    else:
+        print("Nenhum subdomínio encontrado.")
+
+def nmap_vuln_scan():
+    alvo = input("Digite o IP ou domínio para escanear com Nmap: ")
+    print("Executando Nmap com script de vulnerabilidades (-sV --script vuln)...")
+    try:
+        subprocess.run(["nmap", "-sV", "--script", "vuln", alvo])
+    except FileNotFoundError:
+        print("Nmap não encontrado. Certifique-se de que está instalado e no PATH.")
+    except Exception as e:
+        print(f"Ocorreu um erro ao executar o Nmap: {e}")
+
 def portscanner_menu():
     while True:
         print("\n--- Port Scanner ---")
@@ -170,7 +217,9 @@ def main():
         print("1. Port Scanner")
         print("2. DNS Lookup")
         print("3. Verificar Firewall com WAFW00F")
-        print("4. Sair")
+        print("4. Enumeração de Subdomínios")
+        print("5. Scan de Vulnerabilidades com Nmap")
+        print("6. Sair")
         opcao = input("Escolha uma opção: ")
 
         if opcao == "1":
@@ -180,6 +229,10 @@ def main():
         elif opcao == "3":
             wafw00f_scan()
         elif opcao == "4":
+            subdomain_enum()
+        elif opcao == "5":
+            nmap_vuln_scan()
+        elif opcao == "6":
             print("Saindo...")
             sys.exit(0)
         else:
