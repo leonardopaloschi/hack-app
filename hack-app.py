@@ -4,7 +4,6 @@ import json
 import subprocess
 import re
 import os
-import wafw00f
 import concurrent.futures
 
 def load_well_known_ports(filename):
@@ -116,7 +115,7 @@ def resolve_subdomain(subdomain):
 
 def subdomain_enum():
     alvo = input("Digite o domínio principal (ex: example.com): ").strip()
-    wordlist_path = input("Caminho para o arquivo com subdomínios: ").strip()
+    wordlist_path = input("Nome do arquivo (deve estar no mesmo diretório dessa aplicação): ").strip()
 
     if not os.path.exists(wordlist_path):
         print("Arquivo de wordlist não encontrado.")
@@ -144,7 +143,7 @@ def subdomain_enum():
         print("Nenhum subdomínio encontrado.")
 
 def nmap_vuln_scan():
-    alvo = input("Digite o IP ou domínio para escanear com Nmap: ")
+    alvo = input("Digite o IP ou domínio para escanear com Nmap (ex: example.com): ")
     print("Executando Nmap com script de vulnerabilidades (-sV --script vuln)...")
     try:
         subprocess.run(["nmap", "-sV", "--script", "vuln", alvo])
